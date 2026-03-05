@@ -29,10 +29,37 @@ public class ClientServiceTests : IDisposable
     }
 
     [Fact]
-    public void GetAll_ReturnsEmpty_WhenNoRecords()
+    public void GetByCountryCode_ReturnsEmpty_WhenNoRecords()
     {
-        var result = _service.GetAll();
+        var result = _service.GetByCountryCode("US");
         Assert.Empty(result);
+    }
+
+    [Fact]
+    public void GetByCountryCode_ReturnsCorrectRecord()
+    {
+        _service.Add(new ClientRecord { Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+        _service.Add(new ClientRecord { Name = "Bob", TaxId = "TX002", CountryCode = "GB" });
+
+        var result = _service.GetByCountryCode("GB");
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("Bob", result!.First().Name);
+    }
+
+    [Fact]
+    public void GetByCountryCode_ReturnsCorrectRecord_ForLowercase()
+    {
+        _service.Add(new ClientRecord { Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+
+        var result = _service.GetByCountryCode("us");
+
+        Assert.NotNull(result);
+        Assert.Single(result);
+        Assert.Equal("Alice", result!.First().Name);
+
+        Assert.Equal(result.First().Name, _service.GetByCountryCode("US").First().Name);
     }
 
     [Fact]
@@ -43,7 +70,7 @@ public class ClientServiceTests : IDisposable
         var created = _service.Add(client);
 
         Assert.Equal(1, created.ClientId);
-        Assert.Single(_service.GetAll());
+        Assert.Single(_service.GetByCountryCode("US"));
     }
 
     [Fact]
@@ -53,7 +80,8 @@ public class ClientServiceTests : IDisposable
         var second = _service.Add(new ClientRecord { Name = "Bob", TaxId = "TX002", CountryCode = "GB" });
 
         Assert.Equal(2, second.ClientId);
-        Assert.Equal(2, _service.GetAll().Count());
+        Assert.Single(_service.GetByCountryCode("US"));
+        Assert.Single(_service.GetByCountryCode("GB"));
     }
 
     [Fact]

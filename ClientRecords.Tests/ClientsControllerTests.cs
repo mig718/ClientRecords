@@ -39,9 +39,9 @@ public class ClientsControllerTests : IClassFixture<WebApplicationFactory<Progra
     }
 
     [Fact]
-    public async Task GetAll_ReturnsEmptyArray_Initially()
+    public async Task GetByCountryCode_ReturnsEmptyArray_Initially()
     {
-        var response = await _client.GetAsync("/api/clients");
+        var response = await _client.GetAsync("/api/clients/US");
         response.EnsureSuccessStatusCode();
 
         var records = await response.Content.ReadFromJsonAsync<ClientRecord[]>();
@@ -83,5 +83,20 @@ public class ClientsControllerTests : IClassFixture<WebApplicationFactory<Progra
     {
         var response = await _client.GetAsync("/api/clients/999");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetByCountryCode_ReturnsOnlyMatchingRecords()
+    {
+        await _client.PostAsJsonAsync("/api/clients", new { Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+        await _client.PostAsJsonAsync("/api/clients", new { Name = "Bob", TaxId = "TX002", CountryCode = "GB" });
+
+        var response = await _client.GetAsync("/api/clients/US");
+        response.EnsureSuccessStatusCode();
+
+        var records = await response.Content.ReadFromJsonAsync<ClientRecord[]>();
+        Assert.NotNull(records);
+        Assert.Single(records!);
+        Assert.Equal("US", records[0].CountryCode);
     }
 }

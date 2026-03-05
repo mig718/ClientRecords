@@ -15,10 +15,10 @@ public class ClientsController : ControllerBase
         _clientService = clientService;
     }
 
-    [HttpGet]
-    public ActionResult<IEnumerable<ClientRecord>> GetAll()
+    [HttpGet("{countryCode:alpha}")]
+    public ActionResult<IEnumerable<ClientRecord>> GetByCountryCode(string countryCode)
     {
-        return Ok(_clientService.GetAll());
+        return Ok(_clientService.GetByCountryCode(countryCode));
     }
 
     [HttpGet("{id:int}")]

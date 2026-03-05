@@ -1,0 +1,21 @@
+client_id,name,tax_id,country_code
+1,Daniel Garcia,TX4308,AU
+2,Alice Johnson,TX1934,DE
+3,Alice Johnson,TX6994,CA
+4,John Smith,TX8543,US
+5,Bob Lee,TX5444,CA
+6,John Smith,TX3441,DE
+7,Liam Martinez,TX3458,US
+8,John Smith,TX6550,AU
+9,Jane Doe,TX1803,DE
+10,Olivia Brown,TX5862,AU
+11,Sophia Wilson,TX7812,AU
+12,Liam Martinez,TX9505,CA
+13,Emily Davis,TX8147,US
+14,Alice Johnson,TX8540,AU
+15,Emily Davis,TX7532,CA
+16,Olivia Brown,TX9943,UK
+17,Jane Doe,TX5202,US
+18,Sophia Wilson,TX6904,AU
+19,Liam Martinez,TX6594,US
+20,Jane Doe,TX6518,CA

@@ -1,160 +1,75 @@
 using ClientRecords.Models;
+using ClientRecords.Shared;
 
 namespace ClientRecords.Services;
 
 public class ClientService : IClientService
 {
     private readonly string _csvPath;
-    private readonly object _lock = new();
+    private readonly ReaderWriterLockSlim _rwLock = new();
 
     public ClientService(IConfiguration configuration)
     {
+        // Allow overriding the CSV path via configuration for testing purposes
         _csvPath = configuration["ClientRecords:CsvPath"] ?? "clients.csv";
-        EnsureFileExists();
+
+        // If no file exists, create it with empty data
+        Utilities.EnsureFileExists(_csvPath);
+
+        // Note that we are not loading all records into memory, but rather reading from the file on demand.
+        // This allows independent updates to the file without needing to synchronize in-memory state.
+        // I'm making this decision based on the amount of data and speed of reading a local file
+        // If the data load was significant, we could consider caching with a file watcher to reload on changes, but for simplicity we'll read on demand.
     }
 
-    public IEnumerable<ClientRecord> GetAll()
+    public IEnumerable<ClientRecord> GetByCountryCode(string countryCode)
     {
-        lock (_lock)
+        // Use a lightweight read lock to allow concurrent reads while ensuring we don't read while a write is in progress.
+        _rwLock.EnterReadLock();
+        try
         {
-            return ReadAll();
+            return Utilities.GetRecordsFromFile(_csvPath)
+                .Where(c => string.Equals(c.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        finally
+        {
+            _rwLock.ExitReadLock();
         }
     }
 
     public ClientRecord? GetById(int id)
     {
-        lock (_lock)
+        _rwLock.EnterReadLock();
+        try
         {
-            return ReadAll().FirstOrDefault(c => c.ClientId == id);
+            return Utilities.GetRecordsFromFile(_csvPath)
+                .FirstOrDefault(c => c.ClientId == id);
+        }
+        finally
+        {
+            _rwLock.ExitReadLock();
         }
     }
 
     public ClientRecord Add(ClientRecord client)
     {
-        lock (_lock)
+        // Here we need to ensure that we assign a unique ClientId and persist the new record to the file.
+        // So we're entering writer lock to ensure exclusive access while we read.
+        _rwLock.EnterWriteLock();
+        try
         {
-            var existing = ReadAll().ToList();
+            var existing = Utilities.GetRecordsFromFile(_csvPath);
+
+            // Assign a new ClientId based on the max existing ID + 1, or start at 1 if no records exist.
+            // This auto-assignment ensures that clients don't need to provide an ID and that we maintain a consistent sequence.
             client.ClientId = existing.Count > 0 ? existing.Max(c => c.ClientId) + 1 : 1;
-            AppendLine(ToCsvLine(client));
+            client.CountryCode = client.CountryCode.ToUpperInvariant(); // Normalize country code to uppercase for consistency  
+            Utilities.AddRecordToFile(_csvPath, client);
             return client;
         }
-    }
-
-    private void EnsureFileExists()
-    {
-        if (!File.Exists(_csvPath))
+        finally
         {
-            File.WriteAllText(_csvPath, "client_id,name,tax_id,country_code\n");
+            _rwLock.ExitWriteLock();
         }
-    }
-
-    private List<ClientRecord> ReadAll()
-    {
-        var records = new List<ClientRecord>();
-        var lines = File.ReadAllLines(_csvPath);
-        // Skip header row
-        foreach (var line in lines.Skip(1))
-        {
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            var record = ParseLine(line);
-            if (record != null)
-                records.Add(record);
-        }
-        return records;
-    }
-
-    private static ClientRecord? ParseLine(string line)
-    {
-        var parts = SplitCsvLine(line);
-        if (parts.Length < 4)
-            return null;
-
-        if (!int.TryParse(parts[0].Trim(), out var id))
-            return null;
-
-        return new ClientRecord
-        {
-            ClientId = id,
-            Name = Unescape(parts[1]),
-            TaxId = Unescape(parts[2]),
-            CountryCode = Unescape(parts[3])
-        };
-    }
-
-    private static string ToCsvLine(ClientRecord client)
-    {
-        return $"{client.ClientId},{Escape(client.Name)},{Escape(client.TaxId)},{Escape(client.CountryCode)}";
-    }
-
-    private static string Escape(string value)
-    {
-        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
-        {
-            return "\"" + value.Replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
-
-    private static string Unescape(string value)
-    {
-        value = value.Trim();
-        if (value.StartsWith('"') && value.EndsWith('"') && value.Length >= 2)
-        {
-            value = value[1..^1].Replace("\"\"", "\"");
-        }
-        return value;
-    }
-
-    private static string[] SplitCsvLine(string line)
-    {
-        var fields = new List<string>();
-        var current = new System.Text.StringBuilder();
-        bool inQuotes = false;
-
-        for (int i = 0; i < line.Length; i++)
-        {
-            char c = line[i];
-            if (inQuotes)
-            {
-                if (c == '"' && i + 1 < line.Length && line[i + 1] == '"')
-                {
-                    current.Append('"');
-                    i++;
-                }
-                else if (c == '"')
-                {
-                    inQuotes = false;
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-            else
-            {
-                if (c == '"')
-                {
-                    inQuotes = true;
-                }
-                else if (c == ',')
-                {
-                    fields.Add(current.ToString());
-                    current.Clear();
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-        }
-        fields.Add(current.ToString());
-        return fields.ToArray();
-    }
-
-    private void AppendLine(string line)
-    {
-        File.AppendAllText(_csvPath, line + "\n");
     }
 }

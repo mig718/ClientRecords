@@ -114,4 +114,26 @@ public class ClientServiceTests : IDisposable
         Assert.Equal("client_id,name,tax_id,country_code", lines[0]);
         Assert.Equal("1,Alice,TX001,US", lines[1]);
     }
+
+    [Fact]
+    public void Add_Throws_WhenClientIdAlreadyExists()
+    {
+        _service.Add(new ClientRecord { ClientId = 10, Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+
+        var duplicateIdClient = new ClientRecord { ClientId = 10, Name = "Bob", TaxId = "TX002", CountryCode = "GB" };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => _service.Add(duplicateIdClient));
+        Assert.Equal("A client with ID 10 already exists.", ex.Message);
+    }
+
+    [Fact]
+    public void Add_Throws_WhenTaxIdAlreadyExists()
+    {
+        _service.Add(new ClientRecord { Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+
+        var duplicateTaxIdClient = new ClientRecord { Name = "Bob", TaxId = "TX001", CountryCode = "GB" };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => _service.Add(duplicateTaxIdClient));
+        Assert.Equal("A client with Tax ID TX001 already exists.", ex.Message);
+    }
 }

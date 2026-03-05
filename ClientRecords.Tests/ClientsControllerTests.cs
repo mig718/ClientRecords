@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using ClientRecords.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 
@@ -98,5 +99,33 @@ public class ClientsControllerTests : IClassFixture<WebApplicationFactory<Progra
         Assert.NotNull(records);
         Assert.Single(records!);
         Assert.Equal("US", records[0].CountryCode);
+    }
+
+    [Fact]
+    public async Task Post_Returns422_WhenTaxIdIsDuplicate()
+    {
+        await _client.PostAsJsonAsync("/api/clients", new { Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+
+        var response = await _client.PostAsJsonAsync("/api/clients", new { Name = "Bob", TaxId = "TX001", CountryCode = "GB" });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(422, problem!.Status);
+        Assert.Equal("A client with Tax ID TX001 already exists.", problem.Detail);
+    }
+
+    [Fact]
+    public async Task Post_Returns422_WhenClientIdIsDuplicate()
+    {
+        await _client.PostAsJsonAsync("/api/clients", new { ClientId = 7, Name = "Alice", TaxId = "TX001", CountryCode = "US" });
+
+        var response = await _client.PostAsJsonAsync("/api/clients", new { ClientId = 7, Name = "Bob", TaxId = "TX002", CountryCode = "GB" });
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(422, problem!.Status);
+        Assert.Equal("A client with ID 7 already exists.", problem.Detail);
     }
 }

@@ -60,10 +60,30 @@ public class ClientService : IClientService
         {
             var existing = Utilities.GetRecordsFromFile(_csvPath);
 
-            // Assign a new ClientId based on the max existing ID + 1, or start at 1 if no records exist.
-            // This auto-assignment ensures that clients don't need to provide an ID and that we maintain a consistent sequence.
-            client.ClientId = existing.Count > 0 ? existing.Max(c => c.ClientId) + 1 : 1;
-            client.CountryCode = client.CountryCode.ToUpperInvariant(); // Normalize country code to uppercase for consistency  
+            // If the client provided an ID, we should check for duplicates and throw an error if it already exists.
+            if (client.ClientId != 0)
+            {
+                if (existing.Any(c => c.ClientId == client.ClientId))
+                {
+                    throw new InvalidOperationException($"A client with ID {client.ClientId} already exists.");
+                }
+            }
+            else
+            {
+                // If no ID was provided, we will assign one automatically.
+                client.ClientId = existing.Any() ? existing.Max(c => c.ClientId) + 1 : 1;
+            }
+
+            // Do the same for tax ID because no 2 clients should have the same tax ID.
+            // This can be revised based on business rules, but for now we will enforce uniqueness of tax ID as well.
+            if (existing.Any(c => c.TaxId == client.TaxId))
+            {
+                throw new InvalidOperationException($"A client with Tax ID {client.TaxId} already exists.");
+            }
+
+            // Normalize country code to uppercase for consistency  
+            client.CountryCode = client.CountryCode.ToUpperInvariant();
+            
             Utilities.AddRecordToFile(_csvPath, client);
             return client;
         }

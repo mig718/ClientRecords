@@ -34,7 +34,19 @@ public class ClientsController : ControllerBase
     [HttpPost]
     public ActionResult<ClientRecord> Add([FromBody] ClientRecord client)
     {
-        var created = _clientService.Add(client);
-        return CreatedAtAction(nameof(GetById), new { id = created.ClientId }, created);
+        try
+        {
+            var created = _clientService.Add(client);
+            return CreatedAtAction(nameof(GetById), new { id = created.ClientId }, created);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Duplicate client data",
+                Detail = ex.Message
+            });
+        }
     }
 }

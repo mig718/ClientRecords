@@ -1,0 +1,17 @@
+@ClientRecords_HostAddress = http://localhost:5233
+
+GET {{ClientRecords_HostAddress}}/api/clients
+Accept: application/json
+
+###
+
+POST {{ClientRecords_HostAddress}}/api/clients
+Content-Type: application/json
+
+{
+  "name": "Alice",
+  "taxId": "TX001",
+  "countryCode": "US"
+}
+
+###

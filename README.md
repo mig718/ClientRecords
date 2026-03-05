@@ -5,6 +5,10 @@ Minimal ASP.NET Core Web API for storing and querying client records in a CSV-ba
 
 ClientRecords exposes REST endpoints to create client records, query by client ID, and query by country code. Data is read from and persisted to a local CSV file for a lightweight, dependency-free setup.
 
+## Implementation Notes
+
+I used Copilot to scaffold the project and provide folder structure. I then manually edited ClientService, Utilities and ClientServiceTests to provide core functionality and unit tests.
+
 ## Build, Test, Run
 
 ### Build
